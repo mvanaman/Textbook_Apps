@@ -1,0 +1,114 @@
+---
+title: "Least Sqaures Guess vs OLS"
+author: "*Prepared by:* Matthew E. Vanaman"
+date: '`r format(Sys.Date(), "%m-%d-%Y")`'
+monofont: "Fira Code"
+output: 
+  bookdown::html_document2:
+    toc: yes
+    toc_depth: 3
+    fig_caption: yes
+    number_sections: no
+    code_folding: hide
+    theme:
+      code_font: 
+        google: Fira Code
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(wesanderson)
+library(shiny)
+```
+
+
+# to do
+
+1. create plot function
+2. create function to calculate sums of squares etc.
+
+```{r}
+slope <- 0.5
+y_intercept <- 3
+
+plot_guess <- function(slope, y_intercept, tab){
+  # get data
+  x <- 1:10
+  y <- c(2, 1, 5, 3, 6, 4, 8, 10, 7, 9)
+  # predict from best fit
+  best <- lm(y ~ x)
+  # predict from the user-guessed line of fit
+  slope <- slope
+  y_intercept <- y_intercept
+  y_hat <- y_intercept + (slope * x)
+  # calculate user-guessed sums of squares
+  y_resid <- y_hat - y
+  y_resid_sq <- y_resid^2
+  SSs <- sum(y_resid_sq)
+  # combine into table
+  tab <- tibble(
+    X = x, 
+    Y = y, 
+    "Predicted (Guess)" = y_hat, 
+    "Predicted (Best Fit)" = best$fitted.values,
+    "Residuals (Guess)" = y_resid,
+    "Residuals (Best Fit)" = best$residuals, 
+    "Squared Residuals (Guess)" = y_resid_sq,
+    "Squared Residuals (Best Fit)" = best$residuals^2,
+  )
+  # summary Stats
+  SSs <- tibble("Sum of Sqaured Residuals" = c(sum(tab$`Squared Residuals (Guess)`), sum(tab$`Squared Residuals (Best Fit)`)))
+  regression_guess <- tibble(Slope = round(slope, 2), "Y-Intercept" = round(y_intercept, 2))
+  regression_best <- tibble(Slope = round(best$coefficients["(Intercept)"], 2),"Y-Intercept" = round(best$coefficients["x"], 2))
+  regression <- bind_rows(regression_guess, regression_best)
+  reg_table <- cbind(Line = c("Guess", "Best Fit"), regression, SSs)
+  
+  # display plot
+  plot <- ggplot(tab, aes(x = X, y = Y)) +
+    geom_point(alpha = 0.5) +
+    geom_abline(data = reg_table, aes(slope = Slope, intercept = `Y-Intercept`, color = Line), size = 1, show.legend = TRUE) +
+    theme_classic() +
+    theme(legend.position = "top") +
+    scale_color_manual(values = wes_palette(2, name = "Moonrise2", type = "discrete"), name = "")
+  
+  return(
+    list(
+      table = tab,
+      plot = plot,
+      reg_table = reg_table
+      )
+    )
+}
+
+plot_guess(slope = 1, y_intercept = 3)
+```
+
+
+```{r}
+ggplot()+
+    geom_point(data=DF,aes(x=gene1,y=BIME),size=5)+
+    geom_abline(data=coefs, aes(intercept=intercept,slope=slope,linetype=regression), show_guide=TRUE)+
+    ylab("BIME normalized counts (log10(RPKM))")+
+    xlab("gene1 normalized counts (log10(RPKM))")
+```
+
+
+```{r}
+ui <- fluidPage(
+    textInput(
+        inputId = "name", 
+        label = 'Remove head from sphincter, THEN type your name into this box:'
+        ),
+    textOutput("greeting")
+    )
+
+server <- function(input, output) { 
+    output$greeting <- renderText({
+    paste0("Hello, ", input$name, ", ", "you are an unwashed miscreant.")
+    })
+}
+
+shinyApp(ui = ui, server = server, options = list(height = 120))
+```
