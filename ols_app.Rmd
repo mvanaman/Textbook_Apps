@@ -28,16 +28,6 @@ library(shiny)
 
 # to do
 
-- DONE create plot function 
-- DONE create function to calculate sums of squares etc. 
-- DONE create app that plots scatter plot with slope and y-intercept 
-- print regression table
-- print data values table
-- add options:
-  - want residual lines to guess line?
-  - want residual lines to best line?
-  - want to label data points?
-
 
 ```{r}
 plot_guess <- function(slope, y_intercept, tab){
