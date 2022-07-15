@@ -44,11 +44,12 @@ plot_guess <- function(slope, y_intercept, tab){
   y_intercept <- y_intercept
   y_hat <- y_intercept + (slope * x)
   # calculate user-guessed sums of squares
-  y_resid <- y_hat - y
+  y_resid <- y - y_hat
   y_resid_sq <- y_resid^2
   SSs <- sum(y_resid_sq)
   # combine into table
   tab <- tibble(
+    "Data Point" = 1:10,
     X = x, 
     Y = y, 
     "Predicted (Guess)" = y_hat, 
@@ -60,8 +61,8 @@ plot_guess <- function(slope, y_intercept, tab){
   )
   # summary Stats
   SSs <- tibble("Sum of Sqaured Residuals" = c(sum(tab$`Squared Residuals (Guess)`), sum(tab$`Squared Residuals (Best Fit)`)))
-  regression_guess <- tibble(Slope = round(slope, 2), "Y-Intercept" = round(y_intercept, 2))
-  regression_best <- tibble(Slope = round(best$coefficients["(Intercept)"], 2),"Y-Intercept" = round(best$coefficients["x"], 2))
+  regression_guess <- tibble(Slope = slope,  "Y-Intercept" = y_intercept)
+  regression_best <- tibble(Slope = best$coefficients["x"],"Y-Intercept" = best$coefficients["(Intercept)"])
   regression <- bind_rows(regression_guess, regression_best)
   reg_table <- cbind(Line = c("Guess", "Best Fit"), regression, SSs)
   
@@ -69,6 +70,11 @@ plot_guess <- function(slope, y_intercept, tab){
   plot <- ggplot(tab, aes(x = X, y = Y)) +
     geom_point(alpha = 0.5) +
     geom_abline(data = reg_table, aes(slope = Slope, intercept = `Y-Intercept`, color = Line), size = 1, show.legend = TRUE) +
+    # connects dots to line of best fit; add in using ifelse down the line
+    # geom_segment(aes(x = X, y = Y, xend = X, yend = `Predicted (Best Fit)`), linetype = "dashed", color = "#798E87", alpha = 0.75) +
+    # connects dots to line of best guess
+    geom_segment(aes(x = X, y = Y, xend = X, yend = `Predicted (Guess)`), linetype = "dashed", color = "#C27D38", alpha = 0.75) +
+    geom_text(aes(label = `Data Point`), hjust = -1) +
     theme_classic() +
     theme(legend.position = "top") +
     scale_color_manual(values = wes_palette(2, name = "Moonrise2", type = "discrete"), name = "")
@@ -84,6 +90,8 @@ plot_guess <- function(slope, y_intercept, tab){
 
 plot_guess(slope = 1, y_intercept = 3)
 ```
+
+
 
 
 ```{r}
