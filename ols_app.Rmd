@@ -30,9 +30,89 @@ library(shiny)
 2. create function to calculate sums of squares etc.
 
 ```{r}
-slope <- 0.5
-y_intercept <- 3
+plot_guess <- function(slope, y_intercept, tab){
+  # get data
+  x <- 1:10
+  y <- c(2, 1, 5, 3, 6, 4, 8, 10, 7, 9)
+  # predict from best fit
+  best <- lm(y ~ x)
+  # predict from the user-guessed line of fit
+  slope <- slope
+  y_intercept <- y_intercept
+  y_hat <- y_intercept + (slope * x)
+  # calculate user-guessed sums of squares
+  y_resid <- y - y_hat
+  y_resid_sq <- y_resid^2
+  SSs <- sum(y_resid_sq)
+  # combine into table
+  tab <- tibble(
+    "Data Point" = 1:10,
+    X = x, 
+    Y = y, 
+    "Predicted (Guess)" = y_hat, 
+    "Predicted (Best Fit)" = best$fitted.values,
+    "Residuals (Guess)" = y_resid,
+    "Residuals (Best Fit)" = best$residuals, 
+    "Squared Residuals (Guess)" = y_resid_sq,
+    "Squared Residuals (Best Fit)" = best$residuals^2,
+  )
+  # summary Stats
+  SSs <- tibble("Sum of Sqaured Residuals" = c(sum(tab$`Squared Residuals (Guess)`), sum(tab$`Squared Residuals (Best Fit)`)))
+  regression_guess <- tibble(Slope = slope,  "Y-Intercept" = y_intercept)
+  regression_best <- tibble(Slope = best$coefficients["x"],"Y-Intercept" = best$coefficients["(Intercept)"])
+  regression <- bind_rows(regression_guess, regression_best)
+  reg_table <- cbind(Line = c("Guess", "Best Fit"), regression, SSs)
+  
+  # display plot
+  plot <- ggplot(tab, aes(x = X, y = Y)) +
+    geom_point(alpha = 0.5) +
+    geom_abline(data = reg_table, aes(slope = Slope, intercept = `Y-Intercept`, color = Line), size = 1, show.legend = TRUE) +
+    # connects dots to line of best fit; add in using ifelse down the line
+    # geom_segment(aes(x = X, y = Y, xend = X, yend = `Predicted (Best Fit)`), linetype = "dashed", color = "#798E87", alpha = 0.75) +
+    # connects dots to line of best guess
+    geom_segment(aes(x = X, y = Y, xend = X, yend = `Predicted (Guess)`), linetype = "dashed", color = "#C27D38", alpha = 0.75) +
+    geom_text(aes(label = `Data Point`), hjust = -1) +
+    theme_classic() +
+    theme(legend.position = "top") +
+    scale_color_manual(values = wes_palette(2, name = "Moonrise2", type = "discrete"), name = "")
+  
+  return(
+    list(
+      table = tab,
+      plot = plot,
+      reg_table = reg_table
+      )
+    )
+}
+```
 
+```{r}
+ui <- fluidPage(
+    textInput(
+        inputId = "name", 
+        label = 'Remove head from sphincter, THEN type your name into this box:'
+        ),
+    # this renders the output element defined in the server
+    plotOutput("my_plot")
+    )
+server <- function(input, output) {
+    # This tells R to create an output element - a ggplot, in this case. 
+    # which gets sent back to ui 
+    output$my_plot <- renderPlot({
+        ggplot(iris, aes(x = Petal.Length, y = Sepal.Length)) +
+            geom_smooth() +
+            labs(
+                x = "Willingness to Attend Femininist Punk Rock Shows",
+                y = "Potential Points Scored With Kat"
+                ) +
+            theme_minimal()
+    })
+}
+shinyApp(ui = ui, server = server, options = list(height = 525, width = 400))
+```
+
+
+```{r}
 plot_guess <- function(slope, y_intercept, tab){
   # get data
   x <- 1:10
@@ -88,35 +168,107 @@ plot_guess <- function(slope, y_intercept, tab){
     )
 }
 
-plot_guess(slope = 1, y_intercept = 3)
-```
 
-
-
-
-```{r}
-ggplot()+
-    geom_point(data=DF,aes(x=gene1,y=BIME),size=5)+
-    geom_abline(data=coefs, aes(intercept=intercept,slope=slope,linetype=regression), show_guide=TRUE)+
-    ylab("BIME normalized counts (log10(RPKM))")+
-    xlab("gene1 normalized counts (log10(RPKM))")
-```
-
-
-```{r}
 ui <- fluidPage(
-    textInput(
-        inputId = "name", 
-        label = 'Remove head from sphincter, THEN type your name into this box:'
-        ),
-    textOutput("greeting")
+  fluidRow(
+    column(4, 
+      "Take Your Best Guess!",
+      numericInput("slope", label = "Slope", value = 0, min = -100),
+      numericInput("y_intercept", label = "Y-Intercept", value = 0, min = -100)
     )
+  ),
+  fluidRow(
+    column(9, plotOutput("scatterplot"))
+    # column(3, verbatimTextOutput("ttest"))
+  )
+)
 
-server <- function(input, output) { 
-    output$greeting <- renderText({
-    paste0("Hello, ", input$name, ", ", "you are an unwashed miscreant.")
-    })
+server <- function(input, output, session) {
+  slope <- reactive({input$slope})
+  y_intercept <- reactive({input$y_intercept})
+  guess_data <- reactive({plot_guess(slope = slope(), y_intercept = y_intercept())})
+  output$scatterplot <- renderPlot({
+    guess_data()
+      }, res = 96)
+
+  output$ttest <- renderText({
+    x1 <- rnorm(input$n1, input$mean1, input$sd1)
+    x2 <- rnorm(input$n2, input$mean2, input$sd2)
+
+    t_test(x1, x2)
+  })
 }
 
-shinyApp(ui = ui, server = server, options = list(height = 120))
+shinyApp(ui = ui, server = server)
 ```
+
+```{r}
+# freqpoly <- function(x1, x2, binwidth = 0.1, xlim = c(-3, 3)) {
+#   df <- data.frame(
+#     x = c(x1, x2),
+#     g = c(rep("x1", length(x1)), rep("x2", length(x2)))
+#   )
+# 
+#   ggplot(df, aes(x, colour = g)) +
+#     geom_freqpoly(binwidth = binwidth, size = 1) +
+#     coord_cartesian(xlim = xlim)
+# }
+# 
+# t_test <- function(x1, x2) {
+#   test <- t.test(x1, x2)
+#   
+#   # use sprintf() to format t.test() results compactly
+#   sprintf(
+#     "p value: %0.3f\n[%0.2f, %0.2f]",
+#     test$p.value, test$conf.int[1], test$conf.int[2]
+#   )
+# }
+# 
+# 
+# 
+# ui <- fluidPage(
+#   fluidRow(
+#     column(4, 
+#       "Distribution 1",
+#       numericInput("n1", label = "n", value = 1000, min = 1),
+#       numericInput("mean1", label = "µ", value = 0, step = 0.1),
+#       numericInput("sd1", label = "σ", value = 0.5, min = 0.1, step = 0.1)
+#     ),
+#     column(4, 
+#       "Distribution 2",
+#       numericInput("n2", label = "n", value = 1000, min = 1),
+#       numericInput("mean2", label = "µ", value = 0, step = 0.1),
+#       numericInput("sd2", label = "σ", value = 0.5, min = 0.1, step = 0.1)
+#     ),
+#     column(4,
+#       "Frequency polygon",
+#       numericInput("binwidth", label = "Bin width", value = 0.1, step = 0.1),
+#       sliderInput("range", label = "range", value = c(-3, 3), min = -5, max = 5)
+#     )
+#   ),
+#   fluidRow(
+#     column(9, plotOutput("hist")),
+#     column(3, verbatimTextOutput("ttest"))
+#   )
+# )
+# 
+# server <- function(input, output, session) {
+#   output$hist <- renderPlot({
+#     x1 <- rnorm(input$n1, input$mean1, input$sd1)
+#     x2 <- rnorm(input$n2, input$mean2, input$sd2)
+#     
+#     freqpoly(x1, x2, binwidth = input$binwidth, xlim = input$range)
+#   }, res = 96)
+# 
+#   output$ttest <- renderText({
+#     x1 <- rnorm(input$n1, input$mean1, input$sd1)
+#     x2 <- rnorm(input$n2, input$mean2, input$sd2)
+#     
+#     t_test(x1, x2)
+#   })
+# }
+# 
+# shinyApp(ui = ui, server = server)
+
+```
+
