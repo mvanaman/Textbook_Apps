@@ -1,4 +1,4 @@
-packages <- c("tidyverse", "shiny", "wesanderson", "huxtable", "DT")
+packages <- c("tidyverse", "shiny", "wesanderson", "DT")
 lapply(packages, require, character.only = TRUE)
 
 plot_guess <- function(
