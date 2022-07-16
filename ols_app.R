@@ -43,11 +43,13 @@ plot_guess <- function(
   ## r-squared for OLS
   model_OLS <- sum((data$Y - OLS$fitted.values)^2)
   residual_OLS <- sum((data$Y - mean(data$Y))^2)
-  r_squared_OLS <- tibble("<i> R </i> <sup> 2 </sup>" = 1 - (model_OLS / residual_OLS) %>% round(2))
+  r_squared_OLS <- 1 - (model_OLS / residual_OLS)
+  r_squared_OLS <- tibble("<i>R</i><sup>2</sup>" = round(r_squared_OLS, 2))
   ## r-squared from guess
   model_guess <- sum((data$Y - y_hat_guess)^2)
   residual_guess <- sum((data$Y - mean(data$Y))^2)
-  r_squared_guess <- tibble("<i> R </i> <sup> 2 </sup>" = 1 - (model_guess / residual_guess) %>% round(2))
+  r_squared_guess <- 1 - (model_guess / residual_guess)
+  r_squared_guess <- tibble("<i>R</i><sup>2</sup>" =  round(r_squared_guess, 2))
   ## combine into table
   r_squared <- bind_rows(r_squared_guess, r_squared_OLS)
   reg_table <- bind_rows(regression_guess, regression_OLS)
@@ -80,7 +82,7 @@ plot_guess <- function(
         ) 
     } +
     {if (resids_guess)
-      geom_text(aes(label = `Residual (Guess)`), hjust = -1.25, size = 3)
+      geom_text(aes(label = `Residual (Guess)`), hjust = -0.5, size = 3)
     } +
     {if (resids_OLS)
       # connects dots to line of OLS
@@ -100,15 +102,15 @@ plot_guess <- function(
       geom_text(aes(label = `Residual (OLS)`), hjust = 1.25, size = 3) 
     } +
     {if (labels)
-      geom_text(aes(label = 1:10)) # label data points
+      geom_text(aes(label = 1:10), vjust = -1.25) # label data points
     } +
     theme_classic() +
     theme(legend.position = "right") +
     scale_color_manual(
       values = wes_palette(2, name = "Moonrise2", type = "discrete"), name = ""
       ) +
-    scale_y_continuous(limits = c(0, 10))
-  
+    scale_y_continuous(limits = c(-4, 14), breaks = seq(-4, 14, 2))
+
   return( # ----
     list(
       data_tab = data_tab,
@@ -188,7 +190,8 @@ server <- function(input, output, session) {
   )
   
   output$data_tab <- DT::renderDataTable(
-    guess_plot()$data_tab, options = list(pageLength = 3, lengthMenu = 1:10, dom = "tpl")
+    guess_plot()$data_tab, 
+    options = list(pageLength = 3, lengthMenu = 1:10, dom = "plt")
   )
   
 }
