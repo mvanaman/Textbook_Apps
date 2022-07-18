@@ -62,11 +62,16 @@ plot_guess <- function(
   reg_table_OLS <- reg_table_long %>% filter(Line == "OLS") %>% select(-Line)
   reg_table_long <- full_join(reg_table_OLS, reg_table_guess, by = "Statistic")
   reg_table_long <- rename(reg_table_long, "OLS" = Value.x, "Your Guess" = Value.y)
-  
+    
   # display plot ----
   plot <- ggplot(data, aes(x = X, y = Y)) +
     geom_point(alpha = 0.5, shape = 1) +
-    geom_abline(data = reg_table, aes(slope = Slope, intercept = `<i>Y</i>-Intercept`, color = Line), size = c(1, 1.5), show.legend = TRUE) +
+    geom_abline(
+      data = reg_table, 
+      aes(slope = Slope, intercept = `<i>Y</i>-Intercept`, color = Line), 
+      size = c(1, 1.5),
+      show.legend = TRUE
+      ) +
     # connects dots to line of best guess
     {if (resids_guess)
         geom_segment(
