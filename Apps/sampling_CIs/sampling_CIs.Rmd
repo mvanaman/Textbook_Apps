@@ -1,0 +1,54 @@
+---
+title: "Shiny Apps: Basics"
+author: "*Prepared by:* Matthew E. Vanaman"
+date: '`r format(Sys.Date(), "%m-%d-%Y")`'
+monofont: "Fira Code"
+output: 
+  bookdown::html_document2:
+    toc: yes
+    toc_depth: 3
+    fig_caption: yes
+    number_sections: no
+    code_folding: hide
+    theme:
+      code_font: 
+        google: Fira Code
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, comment = NA, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(shiny)
+```
+
+
+# to do
+
+1. create plot function
+- fit model
+
+```{r}
+ggplot(mtcars, aes(x = mpg, y = disp)) +
+  geom_point() +
+  geom_abline(slope = -0.5, intercept = 400)
+```
+
+
+```{r}
+ui <- fluidPage(
+    textInput(
+        inputId = "name", 
+        label = 'Remove head from sphincter, THEN type your name into this box:'
+        ),
+    textOutput("greeting")
+    )
+
+server <- function(input, output) { 
+    output$greeting <- renderText({
+    paste0("Hello, ", input$name, ", ", "you are an unwashed miscreant.")
+    })
+}
+
+shinyApp(ui = ui, server = server, options = list(height = 120))
+```
