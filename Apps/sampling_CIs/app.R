@@ -8,145 +8,139 @@
 #
 library(tidyverse)
 library(shiny)
+library(ggthemes)
 
-# CI
+options(scipen = 999)
 
-conf.sim <- function(mu, sd) {
-  require(ggplot2)
-  require(dplyr)
-  sample.draws <- rnorm(n = 50, mean = mu, sd = sd)
-  sample.draws <- as.data.frame(sample.draws)
-  colnames(sample.draws) <- "sample.values"
-  
-  sample.draws95 <-
-    sample.draws %>%
+conf_sim <- function(mu, sd, n_samples, sample_size = 10, confidence = 95, ...) {# add n for number of samples
+  samples <- replicate(n = n_samples, expr = rnorm(n = sample_size, mean = mu, sd = sd), ...)
+  colnames(samples) <- 1:ncol(samples)
+  samples <- as_tibble(samples)
+  samples <- samples %>% 
+    pivot_longer(cols = everything(), names_to = "Sample", values_to = "Sample_Value") %>% 
+    mutate(Sample = as.numeric(Sample)) %>% 
+    arrange(Sample)
+  # get sample statistics
+  samples <- samples %>%
+    group_by(Sample) %>%
+    summarise(Mean = mean(Sample_Value), SD = sd(Sample_Value), SE = SD / sqrt(sample_size))
+  # add CIs
+  z <- case_when(confidence == 90 ~ 1.645, confidence == 95 ~ 1.96, confidence == 99 ~ 2.576)
+  samples <- samples %>%
     mutate(
-      lower = sample.values - 1.96 * sd(sample.values),
-      upper = sample.values + 1.96 * sd(sample.values)
-    )
+      Lower = Mean - z * sd/sqrt(sample_size),
+      Upper = Mean + z * sd/sqrt(sample_size),
+      Sample = 1:nrow(.),
+      "Interval Contains Population Mean?" = ifelse(Lower < mu, ifelse(Upper > mu, "Yes", "No"), "No"),
+      "Interval Contains Population Mean?" = factor(`Interval Contains Population Mean?`, levels = c("No", "Yes"))
+    ) %>% 
+    select(Sample, Mean, Lower, Upper, `Interval Contains Population Mean?`)
   
-  Samples <- seq(1, 50, 1)
-  Samples <- as.data.frame(Samples)
-  
-  ci95 <- cbind(Samples, sample.draws95)
-  
-  ci95 <-
-    ci95 %>% mutate(Capture = ifelse(lower < mu, ifelse(upper > mu, "Yes", "No"), "No"))
-  
-  ci95$Capture <- factor(ci95$Capture, levels = c("No", "Yes"))
-  
-  colorset = c('No' = 'red', 'Yes' = 'black')
-  
-  null <-
-    ci95 %>%
-    ggplot(aes(x = Samples, y = sample.values)) +
-    geom_point(aes(color = Capture), alpha = .6) + geom_errorbar(aes(
-      ymin = lower,
-      ymax = upper,
-      color = Capture
-    ), alpha = .6) +
-    scale_color_manual(values = colorset) +
-    geom_hline(yintercept = 0,
-               linetype = "dashed",
-               color = "blue") +
+  colorset <-  c('No' = 'red', 'Yes' = 'black')
+  xlim <- c(0, ifelse(n_samples == 1, 2, n_samples))
+
+  plot <- samples %>%
+    ggplot(aes(x = Sample, y = Mean)) +
+    geom_point(aes(color = `Interval Contains Population Mean?`), alpha = .6) +
+    geom_errorbar(
+      aes(ymin = Lower, ymax = Upper, color = `Interval Contains Population Mean?`), 
+      alpha = .4,
+      width = 0
+      ) +
+    scale_color_manual(values = colorset, name = expression(paste('CI Captures ', mu, "?", sep = ""))) +
+    geom_hline(aes(yintercept = mu, linetype = "mu"), color = "purple") +
     labs(title = "95% Confidence Intervals") +
     ylab(label = NULL) +
-    annotate(
-      "text",
-      x = -7,
-      y = 0,
-      label = "mu",
-      parse = TRUE
-    ) +
-    coord_flip(xlim = c(0, 50), clip = "off") +
-    theme(
-      plot.title = element_text(hjust = 0.5),
-      legend.position = "right",      
-      plot.margin = unit(c(0, 0, 1, 0.5), "cm")
-    ) +
-    guides(color = guide_legend(title = "CI Captures \nPopulation Value?"))
-  
-  alt <-
-    ci95 %>%
-    ggplot(aes(x = Samples, y = sample.values)) +
-    geom_point(aes(color = Capture), alpha = .6) +
-    geom_errorbar(aes(
-      ymin = lower,
-      ymax = upper,
-      color = Capture
-    ), alpha = .6) +
-    scale_color_manual(values = colorset) +
-    geom_hline(yintercept = 0,
-               linetype = "dashed",
-               color = "blue")  +
-    geom_hline(yintercept = mu,
-               linetype = "dashed",
-               color = "purple") +
-    labs(title = "95% Confidence Intervals") +
-    ylab(label = NULL) +
-    xlab(label = "Samples (N)") +
-    annotate("text",
-             x = -7,
-             y = 0,
-             label = "Null") +
-    annotate(
-      "text",
-      x = -7,
-      y = mu,
-      label = "mu",
-      parse = TRUE
-    ) +
-    coord_flip(xlim = c(0, 50), clip = "off") +
+    xlab(label = paste("Samples (", expression(N), ")", sep = "")) +
+    coord_flip(xlim = xlim, ylim = c(mu - (4 * sd), mu + (4 * sd)), clip = "off") +
+    theme_tufte() +
     theme(
       plot.title = element_text(hjust = 0.5),
       legend.position = "right",
       plot.margin = unit(c(0, 0, 1, 0.5), "cm")
     ) +
-    guides(color = guide_legend(title = "CI Captures \nPopulation Value?"))
+    # guides(color = guide_legend(title = "CI Captures \nPopulation Value?")) +
+    scale_linetype_manual(
+      name = NULL, 
+      values = 2,
+      labels = expression(mu),
+      guide = guide_legend(override.aes = list(color = "purple"))
+    ) 
   
-  ifelse(mu == 0, return(null), return(alt))
+  return(list(plot = plot, samples = samples))
 }
-
-
 
 # App -----
-
-
-# Define UI for application that draws a histogram
 ui <- fluidPage(
-
-    # Application title
-    titlePanel("Old Faithful Geyser Data"),
-
-    # Sidebar with a slider input for number of bins 
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
-
-        # Show a plot of the generated distribution
-        mainPanel(
-           plotOutput("distPlot")
-        )
+  sidebarLayout(
+    sidebarPanel(
+      numericInput( # 1st (and only) entry in this column
+        "mu", # object name that gets referred to in server
+        label ="Enter A Population Mean (\\( \\mu \\))", # label displayed to user above text box
+        value = 100, # default is the mean of data$Y above
+        step = 1 # increment for if user uses clicker thing to move values up and down
+      ),
+      numericInput(
+        "sd", 
+        label = withMathJax("Enter a Population Standard Deviation \\( \\mu \\)"), 
+        value = 10 
+      ),
+      numericInput(
+        "n_samples", 
+        label = "Enter the Number of Samples You Want to Draw", 
+        value = 100
+      ),
+      numericInput(
+        "confidence", 
+        label = "Enter Your Confidence Level", 
+        value = 95 
+      ),
+      numericInput(
+        "sample_size", 
+        label = "Enter Your Size per Sample", 
+        value = 10
+      ),
+      DT::dataTableOutput("data_tab")
+    ),
+    mainPanel(
+      plotOutput("plot", height = "1000px")
     )
+  )
 )
 
-# Define server logic required to draw a histogram
-server <- function(input, output) {
+server <- function(input, output, session) {
+  
+  # create objects to use later
+  # wrapping in the reactive({}) function lets you re-used object
+  n_samples <- reactive({input$n_samples})
+  sample_size <- reactive({input$sample_size})
+  mu <- reactive({input$mu})
+  sd <- reactive({input$sd})
+  confidence <- reactive({input$confidence})
 
-    output$distPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
-
-        # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = 'darkgray', border = 'white')
-    })
+  CIs <- reactive({
+    conf_sim(
+      n_samples = n_samples(),
+      sample_size = sample_size(), 
+      mu = mu(),
+      sd = sd(),
+      confidence = confidence()
+    )})
+  
+  output$plot <- renderPlot({
+    CIs()$plot
+  }, res = 96)
+  
+  output$data_tab <- DT::renderDataTable({
+    DT::datatable(
+      CIs()$samples,
+      rownames = FALSE,
+      options = list(pageLength = 10, lengthMenu = 1:20, dom = "plt")
+    ) %>%
+      DT::formatRound(columns = c("Mean", "Lower", "Upper"), digits = 2)
+  })
+  
 }
 
-# Run the application 
 shinyApp(ui = ui, server = server)
+
