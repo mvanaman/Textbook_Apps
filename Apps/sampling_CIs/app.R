@@ -82,7 +82,7 @@ ui <- fluidPage(
       ),
       numericInput(
         "sd", 
-        label = withMathJax("Enter a Population Standard Deviation \\( \\mu \\)"), 
+        label = withMathJax("Enter a Population Standard Deviation (\\( \\sigma \\))"), 
         value = 10 
       ),
       numericInput(

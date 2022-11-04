@@ -1,41 +1,22 @@
-setwd("~/Documents/Teaching/Volz summer 19/lab_stuff/lab_stuff_directory")
-library('ProjectTemplate')
-load.project()
-options(scipen=999)
+library(tidyverse)
 
-for (dataset in project.info$dataset)
-{
-  message(paste('Showing top 5 rows of', dataset))
-  print(head(get(dataset)))
-}
-
-
-par(mar = c(7, 2, 2, 2))
-
-grades.all <- grades
-grades.all <- melt(grades.all)
+grades.all <- read_csv("/Users/home/Documents/Teaching/Previous/Volz summer 19/lab_stuff/lab_stuff_directory/data/grades.csv") %>% select(1:2)
+grades.all <- reshape2::melt(grades.all)
 colnames(grades.all) <- c("Homework", "Grade")
 ### Homeworks: Hist. All HWs so far ----
 
-y <- matrix(c(round(mean(grades.all[, 2]), 0),
-              round(sd(grades.all[, 2]), 0)),
+y <- matrix(c(round(mean(grades.all[, "Grade"]), 0),
+              round(sd(grades.all[, "Grade"]), 0)),
             nrow= 2, ncol = 1)
 x <- matrix(c("Mean =", "Standard Deviation ="), 
             nrow = 2, ncol = 1)
 stats.sofar <- matrix(paste(x, y))
 hw.sofar.plot <- ggplot(grades.all, aes(x= Grade)) + 
-  geom_histogram(aes(y= (..count..)), binwidth = 5, colour="black", fill="white")+
+  geom_histogram(aes(y = ..count..), binwidth = 5, colour="black", fill="white")+
   geom_density(alpha=.2, fill="#FF6666", aes(y = (..scaled.. * max(table(grades.all$Grade))))) +
   labs(title = "Histogram: HW Grades So Far") +
   ylab("Frequency") + xlab("Grade") + 
-  theme_classic() +
-  theme(text = element_text(size=10,
-                            family="Times New Roman"),
-        axis.text.x = element_text(angle=90, hjust=1),
-        plot.title = element_text(hjust = 0.5),
-        panel.grid.major = element_blank(), 
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank()) 
+  theme_classic()  
 
 hw.sofar.plot
 cat("\n", stats.sofar[1, ], "\n", stats.sofar[2, ])
