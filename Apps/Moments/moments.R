@@ -1,4 +1,4 @@
-packages <- c("tidyverse", "shiny", "wesanderson", "DT")
+packages <- c("tidyverse", "shiny", "wesanderson", "DT", "patchwork")
 lapply(packages, require, character.only = TRUE)
 
 
@@ -30,7 +30,9 @@ get_moments_data <- function(mean = 0, variance = 1, skewness = 0, kurtosis = 3,
     theme_classic() +
     theme(plot.margin = unit(c(0, 0, 0, 0), units = "cm"))
    raincloud <- my_raincloud(data)
-    return(list(data = data, histogram = histogram, raincloud = raincloud))
+   plots <- histogram / raincloud
+
+    return(list(data = data, histogram = histogram, raincloud = raincloud, plots = plots))
 }
 
 
@@ -72,8 +74,7 @@ ui <- fluidPage( # ----
       dataTableOutput("data")
     ),
     mainPanel(
-      plotOutput("histogram"),
-      plotOutput("raincloud")
+      plotOutput("plots", height = 800)
     )
   )
 )
@@ -97,12 +98,8 @@ server <- function(input, output, session) {
       # sample_size = sample_size()
       )})
   
-  output$histogram <- renderPlot({
-    moments_data()$histogram
-  }, res = 96)
-  
-  output$raincloud <- renderPlot({
-    moments_data()$raincloud
+  output$plots <- renderPlot({
+    moments_data()$plots
   }, res = 96)
 
   output$data <- DT::renderDataTable(
