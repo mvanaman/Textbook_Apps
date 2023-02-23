@@ -1,4 +1,4 @@
-packages <- c("tidyverse", "shiny", "wesanderson", "DT", "ggExtra", "ggrepel")
+packages <- c("tidyverse", "shiny", "wesanderson", "DT", "ggExtra", "ggrepel", "ggiraph")
 lapply(packages, require, character.only = TRUE)
 
 plot_guess <- function(
@@ -67,8 +67,9 @@ plot_guess <- function(
   reg_table_long <- rename(reg_table_long, "OLS" = Value.x, "Your Guess" = Value.y)
   
   # display plot ----
-  plot <- ggplot(data, aes(x = X, y = Y)) +
+  plot <- ggplot(data, aes(x = X, y = Y, tooltip = X)) +
     geom_point(alpha = 0.5, shape = 1) +
+    geom_point_interactive(alpha = 0.5, shape = 1) +
     geom_abline(
       data = reg_table, 
       aes(slope = Slope, intercept = `<i>Y</i>-Intercept`, color = Line), 
@@ -119,8 +120,9 @@ plot_guess <- function(
     ) +
     scale_y_continuous(limits = c(0, 10), breaks = seq(0, 10, 2)) +
     scale_x_continuous(limits = c(0, 10), breaks = seq(0, 10, 2))
-  
+
   plot <- ggMarginal(plot, type = "density")
+  plot <- girafe(code = {print(plot)})
   
   return( # ----
           list(
@@ -165,7 +167,7 @@ ui <- fluidPage(
       )
     ),
     mainPanel(
-      plotOutput("plot", width = 850, height = 500),
+      ggiraphOutput("plot", width = 850, height = 500),
       dataTableOutput("data_tab")
     )
   )
@@ -190,9 +192,11 @@ server <- function(input, output, session) {
       labels = labels()
     )})
   
-  output$plot <- renderPlot({
+  output$plot <- renderggiraph({
     guess_plot()$plot
-  }, res = 96)
+  }
+  # , res = 96
+  )
   
   output$reg_table_long <- renderTable({
     guess_plot()$reg_table_long
