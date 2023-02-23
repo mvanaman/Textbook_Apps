@@ -29,13 +29,23 @@ plot_guess <- function(
     "Squared Residual (OLS)" = OLS$residuals^2,
     "Predicted Y (Guess)" = y_hat_guess, 
     "Residual (Guess)" = y_resid_guess,
-    "Squared Residual (Guess)" = y_resid_guess_sq,
+    "Squared Residual (Guess)" = y_resid_guess_sq
   ) %>% 
-    mutate(across(.cols = 3:ncol(.), round, 2))
-  data_tab <- data %>% 
     mutate(
-      across(.cols = 3:ncol(.), round, 2), across(.cols = 3:ncol(.), format, nsmall = 2)
-    )
+      across(.cols = where(is.numeric), round, 1),
+      interactive_label = paste(
+        "Observed Y: ",
+        format(Y, nsmall = 1),
+        "<br>",
+        "Predicted Y (OLS): ", 
+        format(`Predicted Y (OLS)`, nsmall = 1),
+        "<br>",
+        "Predicted Y (Guess): ",
+        format(`Predicted Y (Guess)`, nsmall = 1)
+        )
+      )
+  data_tab <- data %>% 
+    mutate(across(.cols = 3:(ncol(.)-1), round, 2), across(.cols = 3:ncol(.), format, nsmall = 2))
   # get summary Stats ----
   SSs <- tibble("Sum of Sqaured Residuals" = c(sum(data$`Squared Residual (Guess)`), sum(data$`Squared Residual (OLS)`)))
   regression_guess <- tibble("<i>Y</i>-Intercept" = y_intercept, Slope = slope, )
@@ -67,7 +77,7 @@ plot_guess <- function(
   reg_table_long <- rename(reg_table_long, "OLS" = Value.x, "Your Guess" = Value.y)
   
   # display plot ----
-  plot <- ggplot(data, aes(x = X, y = Y, tooltip = X)) +
+  plot <- ggplot(data, aes(x = X, y = Y, tooltip = interactive_label)) +
     geom_point(alpha = 0.5, shape = 1) +
     geom_point_interactive(alpha = 0.5, shape = 1) +
     geom_abline(
@@ -114,7 +124,7 @@ plot_guess <- function(
       geom_text_repel(aes(label = 1:20), size = 3) # label data points
     } +
     theme_classic() +
-    theme(legend.position = "left") +
+    theme(legend.position = "bottom") +
     scale_color_manual(
       values = wes_palette(2, name = "Moonrise2", type = "discrete"), name = ""
     ) +
@@ -167,8 +177,8 @@ ui <- fluidPage(
       )
     ),
     mainPanel(
-      ggiraphOutput("plot", width = 850, height = 500),
-      dataTableOutput("data_tab")
+      ggiraphOutput("plot", width = 900, height = 850)
+      # ,dataTableOutput("data_tab")
     )
   )
 )
