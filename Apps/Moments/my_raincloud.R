@@ -1,3 +1,4 @@
+require(gghalves)
 position_jitternudge <- # ----
     function(jitter.width = NULL,
              jitter.height = 0,
@@ -100,7 +101,6 @@ my_raincloud <- function (
             alpha = 0.4,
             size = 0.5
         ) +
-        scale_color_manual(values =  color) +
         geom_half_violin(
             fill = fill,
             color = color,
@@ -121,11 +121,14 @@ my_raincloud <- function (
             width = 0.15,
             show.legend = FALSE
         ) +
-        coord_flip() +
-        ylim(c(-20, 20)) +
-        xlim(c(0.8, 1.44)) +
-        theme_void() +
-        theme(plot.margin = unit(c(0, 0, 0, 0), units = "cm"))
+      scale_color_manual(values =  color) +
+      scale_y_continuous(expand = c(0, 0)) +
+      scale_x_continuous(expand = c(0, 0)) +
+      coord_flip() +
+      ylim(c(-20, 20)) +
+      xlim(c(0.8, 1.44)) +
+      theme_void() +
+      theme(plot.margin = unit(c(0, 0, 0, 0), units = "cm")) 
     
     return(figure_1x1_vertical)
 }
